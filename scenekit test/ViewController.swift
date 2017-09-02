@@ -81,6 +81,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         super.viewWillAppear(animated)
         makeFloor()
         blocksOnFloor()
+        moreFloors()
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
         //configuration.worldAlignment = .gravity
@@ -119,6 +120,10 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         let mat = SCNMatrix4(cameraTransform!) // 4x4 transform matrix describing camera in world space
         // orientation of camera in world space, transform for in front of camera
         let dir = SCNVector3(-10 * mat.m31, -10 * mat.m32, -10 * mat.m33)
+        // DISTANCE FORMULA!!!!!!
+        print(sqrt(pow(dir.x, 2) + pow(dir.y, 2) + pow(dir.z, 2))) // SO COOL!! The distance balances out to be 10 every time!!
+        // So this means that when we make the vector value the orientation, the impulse applied on the ball will always be constant (10 newton-seconds)
+        print(dir)
         /*
          * direction vector help from repo: https://github.com/farice/ARShooter/blob/master/ARViewer/ViewController.swift
          * Apple seriously needs better docs for that
@@ -150,8 +155,38 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         }
     }
     
+    func moreFloors() {
+        print("called")
+        for i in 1...5 {
+            let floor = SCNBox(width: 1, height: 0.09, length: 1, chamferRadius: 0.3)
+            let floorNode = SCNNode(geometry: floor)
+            sceneView.scene.rootNode.addChildNode(floorNode)
+            var translation = matrix_identity_float4x4
+            translation.columns.3.z = -2 * Float(i)
+            translation.columns.3.y = -0.3
+            floorNode.simdTransform = matrix_multiply(matrix_identity_float4x4, translation)
+            floor.firstMaterial?.diffuse.contents = UIColor.init(red: 0, green: 0, blue: 1, alpha: 0.5)
+            let floorbody = SCNPhysicsBody(type: .kinematic, shape: SCNPhysicsShape(geometry: floor, options: nil))
+            floorbody.categoryBitMask = 0b0001
+            floorNode.physicsBody = floorbody
+            
+            for t in 1...15 {
+                let cubeGeo = SCNBox(width: 0.2, height: 0.2, length: 0.2, chamferRadius: 0)
+                var cubetranslation = matrix_identity_float4x4
+                cubetranslation.columns.3.y = 0
+                cubetranslation.columns.3.z = -2 * Float(i)
+                let cubeNode = SCNNode(geometry: cubeGeo)
+                cubeNode.simdTransform = matrix_multiply(matrix_identity_float4x4, cubetranslation)
+                let cubebody = SCNPhysicsBody(type: .dynamic, shape: SCNPhysicsShape(geometry: cubeGeo, options: nil))
+                cubebody.collisionBitMask = 0b0001
+                cubeNode.physicsBody = cubebody
+                self.sceneView.scene.rootNode.addChildNode(cubeNode)
+            }
+        }
+    }
+    
     func makeFloor() -> SCNNode {
-        let floorgeo = SCNBox(width: 10, height: 0.05, length: 10, chamferRadius: 0)
+        let floorgeo = SCNBox(width: 20, height: 0.05, length: 20, chamferRadius: 0)
         floorgeo.firstMaterial?.diffuse.contents = UIColor.init(red: 1, green: 1, blue: 1, alpha: 0.0)
         let floornode = SCNNode(geometry: floorgeo)
         sceneView.scene.rootNode.addChildNode(floornode)
