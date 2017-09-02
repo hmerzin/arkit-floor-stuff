@@ -80,6 +80,7 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         makeFloor()
+        blocksOnFloor()
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
         //configuration.worldAlignment = .gravity
@@ -110,11 +111,43 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         newSphere.firstMaterial?.diffuse.contents = UIColor.init(red: 0, green: 1, blue: 0, alpha: 0.5)
         sceneView.scene.rootNode.addChildNode(sphereNode)
         var translation = matrix_identity_float4x4
-        translation.columns.3.z = -2
+        translation.columns.3.z = -0.5
         //\translation.columns.3.x = -1
         //translation.columns.3.y = 1
         sphereNode.simdTransform = matrix_multiply(cameraTransform!, translation)
-        
+        let angles = sceneView.session.currentFrame?.camera.eulerAngles
+        let mat = SCNMatrix4(cameraTransform!) // 4x4 transform matrix describing camera in world space
+        // orientation of camera in world space, transform for in front of camera
+        let dir = SCNVector3(-10 * mat.m31, -10 * mat.m32, -10 * mat.m33)
+        /*
+         * direction vector help from repo: https://github.com/farice/ARShooter/blob/master/ARViewer/ViewController.swift
+         * Apple seriously needs better docs for that
+         */
+
+        sphereNode.physicsBody?.applyForce(dir, asImpulse: true)
+    }
+    
+    func scale(_ vector: SCNVector3, by float: Float) -> SCNVector3 {
+        var newVector = SCNVector3()
+        newVector.x *= float
+        newVector.y *= float
+        newVector.z *= float
+        return newVector
+    }
+    
+    func blocksOnFloor() {
+        for i in 1...15 {
+            let cubeGeo = SCNBox(width: 0.2, height: 0.2, length: 0.2, chamferRadius: 0)
+            var cubetranslation = matrix_identity_float4x4
+            cubetranslation.columns.3.y = -1
+            cubetranslation.columns.3.z = -2
+            let cubeNode = SCNNode(geometry: cubeGeo)
+            cubeNode.simdTransform = matrix_multiply(matrix_identity_float4x4, cubetranslation)
+            let cubebody = SCNPhysicsBody(type: .dynamic, shape: SCNPhysicsShape(geometry: cubeGeo, options: nil))
+            cubebody.collisionBitMask = 0b0001
+            cubeNode.physicsBody = cubebody
+            self.sceneView.scene.rootNode.addChildNode(cubeNode)
+        }
     }
     
     func makeFloor() -> SCNNode {
