@@ -25,17 +25,64 @@ class ViewController: UIViewController, ARSCNViewDelegate {
         
         // Create a new scene
         let scene = SCNScene(named: "art.scnassets/ship.scn")!
+        // And the floor
+        let floor = SCNBox(width: 1, height: 0.09, length: 1, chamferRadius: 0.3)
+        let floorNode = SCNNode(geometry: floor)
+        scene.rootNode.addChildNode(floorNode)
+        var translation = matrix_identity_float4x4
+        translation.columns.3.z = -2
+        translation.columns.3.y = -0.3
+        floorNode.simdTransform = matrix_multiply(matrix_identity_float4x4, translation)
+        floor.firstMaterial?.diffuse.contents = UIColor.init(red: 0, green: 0, blue: 1, alpha: 0.5)
+        floorNode.physicsBody?.type = .kinematic
+        // Make a cube to sit on the "floor"
+        let cubeGeo = SCNBox(width: 0.2, height: 0.2, length: 0.2, chamferRadius: 0)
+        var cubetranslation = matrix_identity_float4x4
+        cubetranslation.columns.3.y = 1
+        cubetranslation.columns.3.z = -2
+        
+        
+        //let verybottom = SCNBox(width: 1000, height: 0.09, length: 1000, chamferRadius: 0)
+        //verybottom.firstMaterial?.diffuse.contents = UIColor.init(red: 1, green: 0, blue: 1, alpha: 0.5)
+        //var btranslation = matrix_identity_float4x4
+        //btranslation.columns.3.y = -3
+        //let bnode = SCNNode(geometry: verybottom)
+        //bnode.simdTransform = matrix_multiply(matrix_identity_float4x4, btranslation)
+        //bnode.physicsBody?.type = .kinematic
+        //scene.rootNode.addChildNode(bnode)
+        
+        
+        let cubeNode = SCNNode(geometry: cubeGeo)
+        cubeNode.simdTransform = matrix_multiply(matrix_identity_float4x4, cubetranslation)
+        let cubebody = SCNPhysicsBody(type: .dynamic, shape: SCNPhysicsShape(geometry: cubeGeo, options: nil))
+        cubebody.collisionBitMask = 0b0001
+        cubeNode.physicsBody = cubebody
+    
+
+        let floorbody = SCNPhysicsBody(type: .kinematic, shape: SCNPhysicsShape(geometry: floor, options: nil))
+        floorbody.categoryBitMask = 0b0001
+        floorNode.physicsBody = floorbody
+        
+        //physicsBody.restitution = 0.25
+        //physicsBody.friction = 0.75
+        //physicsBody.categoryBitMask = CollisionTypes.shape.rawValue
+        
+        //scene.rootNode.addChildNode(makeFloor())
+
+        scene.rootNode.addChildNode(cubeNode)
         
         // Set the scene to the view
+        //sceneView.scene.physicsWorld.gravity = SCNVector3(0.0,-9.8,0.0)
+        
         sceneView.scene = scene
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
+        makeFloor()
         // Create a session configuration
         let configuration = ARWorldTrackingConfiguration()
-
+        //configuration.worldAlignment = .gravity
         // Run the view's session
         sceneView.session.run(configuration)
     }
@@ -50,6 +97,39 @@ class ViewController: UIViewController, ARSCNViewDelegate {
     override func didReceiveMemoryWarning() {
         super.didReceiveMemoryWarning()
         // Release any cached data, images, etc that aren't in use.
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        let camerapos = sceneView.scene
+        let newSphere = SCNSphere(radius: 0.1)
+        let cameraTransform = sceneView.session.currentFrame?.camera.transform
+        var sphereNode = SCNNode(geometry: newSphere)
+        var newBody = SCNPhysicsBody(type: .dynamic, shape: SCNPhysicsShape(geometry: newSphere, options: nil))
+        newBody.collisionBitMask = 0b0001
+        sphereNode.physicsBody = newBody
+        newSphere.firstMaterial?.diffuse.contents = UIColor.init(red: 0, green: 1, blue: 0, alpha: 0.5)
+        sceneView.scene.rootNode.addChildNode(sphereNode)
+        var translation = matrix_identity_float4x4
+        translation.columns.3.z = -2
+        //\translation.columns.3.x = -1
+        //translation.columns.3.y = 1
+        sphereNode.simdTransform = matrix_multiply(cameraTransform!, translation)
+        
+    }
+    
+    func makeFloor() -> SCNNode {
+        let floorgeo = SCNBox(width: 10, height: 0.05, length: 10, chamferRadius: 0)
+        floorgeo.firstMaterial?.diffuse.contents = UIColor.init(red: 1, green: 1, blue: 1, alpha: 0.0)
+        let floornode = SCNNode(geometry: floorgeo)
+        sceneView.scene.rootNode.addChildNode(floornode)
+        let floorPhys = SCNPhysicsBody(type: .kinematic, shape: SCNPhysicsShape(geometry: floorgeo, options: nil))
+        floorPhys.categoryBitMask = 0b0001
+        floornode.physicsBody = floorPhys
+        var ftransformation = matrix_identity_float4x4
+        ftransformation.columns.3.y = -2
+        ftransformation.columns.3.z = -2
+        floornode.simdTransform = matrix_multiply(matrix_identity_float4x4, ftransformation)
+        return floornode
     }
 
     // MARK: - ARSCNViewDelegate
